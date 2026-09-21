@@ -33,14 +33,5 @@ _bss_init:
 
 _bss_init_skip:
 
-    la    $a1, _mainargv
     j     main
-    li    $a0, 1
-
-    .section .rodata, "a", @progbits
-    .align 2
-_mainargv:
-    .word _progname
-    .word 0
-_progname:
-    .string "PSX.EXE"
+    nop

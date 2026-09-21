@@ -29,6 +29,9 @@ static void PrintFunction(const Proto* f, int full);
 #define PROGNAME "luac"        /* default program name */
 #define OUTPUT PROGNAME ".out" /* default output file */
 
+#define ARGS_BASE 0x40000000 /* unmapped; args.lua serves this through UnknownMemoryRead */
+#define MAXARGS 64           /* size of the argv array main() builds from ARGS_BASE */
+
 static int listing = 0;                 /* list bytecodes? */
 static int dumping = 1;                 /* dump bytecodes? */
 static int stripping = 0;               /* strip debug information? */
@@ -140,7 +143,7 @@ static const Proto* combine(lua_State* L, int n) {
 static int writer(lua_State* L, const void* p, size_t size, void* u) {
     UNUSED(L);
     int r = PCwrite(*(int*)u, p, size);
-    return (r != size) && (size != 0);
+    return (r < 0 || (size_t)r != size) && (size != 0);
 }
 
 LUALIB_API int(luaL_loadfilex)(lua_State* L, const char* filename, const char* mode);
@@ -174,12 +177,12 @@ static int errfile(lua_State* L, const char* what, int fnameindex) {
     return LUA_ERRFILE;
 }
 
-#define EOF -1
+#define LUAC_EOF (-1)
 
-static int getc(int f) {
+static int luaA_getc(int f) {
     int c = 0;
     int r = PCread(f, &c, 1);
-    return r == 1 ? c : -1;
+    return r == 1 ? c : LUAC_EOF;
 }
 
 static int skipBOM(LoadF* lf) {
@@ -187,12 +190,12 @@ static int skipBOM(LoadF* lf) {
     int c;
     lf->n = 0;
     do {
-        c = getc(lf->f);
-        if (c == EOF || c != *(const unsigned char*)p++) return c;
+        c = luaA_getc(lf->f);
+        if (c == LUAC_EOF || c != *(const unsigned char*)p++) return c;
         lf->buff[lf->n++] = c; /* to be read by the parser */
     } while (*p != '\0');
     lf->n = 0;          /* prefix matched; discard it */
-    return getc(lf->f); /* return next character */
+    return luaA_getc(lf->f); /* return next character */
 }
 
 /*
@@ -206,9 +209,9 @@ static int skipcomment(LoadF* lf, int* cp) {
     int c = *cp = skipBOM(lf);
     if (c == '#') { /* first line is a comment (Unix exec. file)? */
         do {        /* skip first line */
-            c = getc(lf->f);
-        } while (c != EOF && c != '\n');
-        *cp = getc(lf->f); /* skip end-of-line, if present */
+            c = luaA_getc(lf->f);
+        } while (c != LUAC_EOF && c != '\n');
+        *cp = luaA_getc(lf->f); /* skip end-of-line, if present */
         return 1;          /* there was a comment */
     } else
         return 0; /* no comment */
@@ -228,7 +231,7 @@ LUALIB_API int luaL_loadfilex(lua_State* L, const char* filename, const char* mo
     }
     if (skipcomment(&lf, &c))                 /* read initial portion */
         lf.buff[lf.n++] = '\n';               /* add line to correct line numbers */
-    if (c != EOF) lf.buff[lf.n++] = c; /* 'c' is the first character of the stream */
+    if (c != LUAC_EOF) lf.buff[lf.n++] = c; /* 'c' is the first character of the stream */
     status = lua_load(L, getF, &lf, lua_tostring(L, -1), mode);
     PCclose(lf.f);
     lua_remove(L, fnameindex);
@@ -242,8 +245,7 @@ static int pmain(lua_State* L) {
     int i;
     if (!lua_checkstack(L, argc)) fatal("too many input files");
     for (i = 0; i < argc; i++) {
-        const char* filename = IS("-") ? NULL : argv[i];
-        if (luaL_loadfile(L, filename) != LUA_OK) fatal(lua_tostring(L, -1));
+        if (luaL_loadfile(L, argv[i]) != LUA_OK) fatal(lua_tostring(L, -1));
     }
     f = combine(L, argc);
     if (listing) luaU_print(f, listing > 1);
@@ -261,16 +263,17 @@ static int pmain(lua_State* L) {
 }
 
 int main() {
-    const char * argv[64] = { 0 };
-    const char * argsPtr = (const char *) 0x40000000;
+    const char* argv[MAXARGS] = {0};
+    const char* argsPtr = (const char*)ARGS_BASE;
     int argc = 0;
-    while (1) {
+    lua_State* L;
+    while (argc < MAXARGS) {
         int len = luaA_strlen(argsPtr);
         if (len == 0) break;
         argv[argc++] = argsPtr;
         argsPtr += len + 1;
     }
-    lua_State* L;
+    if (argc == MAXARGS && luaA_strlen(argsPtr) != 0) fatal("too many arguments");
     int i = doargs(argc, argv);
     argc -= i;
     if (argc <= 0) usage("no input files given");

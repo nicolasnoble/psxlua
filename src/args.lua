@@ -18,7 +18,6 @@ function createArgsBuffer(...)
         local a = tostring(v)
         ffi.copy(ptr, a)
         ptr = ptr + #a + 1
-        spaceNeeded = spaceNeeded + #a + 1
     end
     ptr[0] = 0
 end
@@ -27,7 +26,7 @@ function UnknownMemoryRead(address, size)
     if size ~= 1 then return 0xffffffff end
     local offset = address - 0x40000000
     if offset < 0 then return 0xff end
-    if offset > ffi.sizeof(argsBuffer) then return 0xff end
+    if offset >= ffi.sizeof(argsBuffer) then return 0xff end
     return argsBuffer[offset]
 end
 
