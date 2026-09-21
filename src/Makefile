@@ -53,7 +53,7 @@ MYOBJS=
 
 # == END OF USER SETTINGS -- NO NEED TO CHANGE ANYTHING BELOW THIS LINE =======
 
-PLATS= host32 psx psx-noparser
+PLATS= host32 psx psx-noparser psx-luac
 
 ifeq ($(NOPARSER),true)
 LUA_A=	liblua-noparser.a
@@ -131,6 +131,9 @@ psx:
 
 psx-noparser:
 	$(MAKE) a TARGET=psx NOPARSER=true
+
+psx-luac: psx
+	$(MAKE) -f luac-psx.mk
 
 # list targets that do not create files (but not all makes understand .PHONY)
 .PHONY: all $(PLATS) default o a clean depend echo none

@@ -2,3 +2,7 @@
 *.a
 luac
 lua
+*.ps-exe
+*.elf
+*.map
+*.dep
