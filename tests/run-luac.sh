@@ -27,8 +27,11 @@ trap 'rm -rf "$WORK"' EXIT
 cp "$EXE" "$ROOT/tests/sample.lua" "$ROOT/src/args.lua" "$WORK/"
 echo "createArgsBuffer('-o', 'sample.luac', 'sample.lua')" >> "$WORK/args.lua"
 
-"$EMU" -testmode -run -stdout -lua_stdout -pcdrv -pcdrvbase "$WORK" \
-       -dofile "$WORK/args.lua" -loadexe "$WORK/luac.ps-exe"
+# -no-ui keeps it off a display, and the timeout is there because an emulator
+# that never reaches pcsx_exit would otherwise hold a CI job open for hours.
+timeout 120 "$EMU" -no-ui -testmode -run -stdout -lua_stdout \
+        -pcdrv -pcdrvbase "$WORK" \
+        -dofile "$WORK/args.lua" -loadexe "$WORK/luac.ps-exe"
 
 if [ ! -s "$WORK/sample.luac" ]; then
     echo "luac.ps-exe produced no bytecode" >&2
