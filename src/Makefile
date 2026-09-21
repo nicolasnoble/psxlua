@@ -78,8 +78,8 @@ LUA_O=	lua.o
 LUAC_T=	luac
 LUAC_O=	luac.o
 
-ALL_O= $(BASE_O) $(LUA_O) $(LUAC_O)
-ALL_T= $(LUA_A) $(LUA_T) $(LUAC_T)
+ALL_O= $(BASE_O) $(LUA_O)
+ALL_T= $(LUA_A) $(LUA_T)
 ALL_A= $(LUA_A)
 
 # Targets start here.
@@ -98,11 +98,9 @@ $(LUA_A): $(BASE_O)
 $(LUA_T): $(LUA_O) $(LUA_A)
 	$(CC) -o $@ $(LDFLAGS) $(LUA_O) $(LUA_A) $(LIBS)
 
-$(LUAC_T): $(LUAC_O) $(LUA_A)
-	$(CC) -o $@ $(LDFLAGS) $(LUAC_O) $(LUA_A) $(LIBS)
-
 clean:
 	$(RM) $(ALL_T) $(ALL_O) $(ALL_A) liblua-noparser.a lnoparser.o
+	$(RM) $(LUAC_T) $(LUAC_O) psx-heap.o psx-glue.o luac.elf luac.map luac.ps-exe *.dep
 
 depend:
 	@$(CC) $(CFLAGS) -MM l*.c

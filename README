@@ -8,7 +8,7 @@ further information about Lua, see doc/readme.html.
 
 This version of Lua has been modified to work on the Sony PlayStation 1.
 
-There are now only three platforms available for compilation:
+There are now only four platforms available for compilation:
 - `psx`: This platform is used to compile Lua for the Sony PlayStation 1. This
   will only generate a library file named "liblua.a". The binary footprint of
   this library will be roughly 110kB.
@@ -16,10 +16,25 @@ There are now only three platforms available for compilation:
   1 without the parser. Only precompiled bytecode can be loaded by this version.
   This will only generate a library file named "liblua-noparser.a". The binary
   footprint of this library will be roughly 85kB.
+- `psx-luac`: This platform builds the Lua compiler itself as a ps-exe, named
+  "luac.ps-exe". Running the compiler on the target is what makes its bytecode
+  a sure thing: the number representation, the pointer size and the endianness
+  are the target's by construction rather than by a matching host build.
 - `host32`: This platform is used to compile Lua for a 32-bit host system. This
-  will generate the Lua interpreter (lua) and the lua compiler (luac). The
-  compiler should be able to generate bytecode that can be run on the Sony
-  PlayStation 1.
+  will generate the Lua interpreter (lua). It no longer generates the compiler;
+  use `psx-luac` for that, since a 32-bit host build is not available in most
+  environments any more.
+
+The `psx-luac` platform is the only part of this repository that needs nugget,
+and it is not vendored: nugget's psyqo-lua consumes psxlua, so a submodule here
+would close a dependency cycle. Point NUGGET at a checkout instead.
+
+    make -C src psx-luac NUGGET=/path/to/nugget
+
+luac.ps-exe reads its arguments from unmapped memory at 0x40000000 and does its
+file I/O over PCDRV, so it runs under an emulator that serves both. src/args.lua
+is the pcsx-redux side: call createArgsBuffer() with the arguments you would
+have passed on a command line, and load it alongside the executable.
 
 The following key differences exist between the original Lua 5.2.4 and this
 version of Lua:
