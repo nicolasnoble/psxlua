@@ -1,0 +1,54 @@
+name: Build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: ghcr.io/grumpycoders/pcsx-redux-build:latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Nugget
+        # Checked out rather than vendored: nugget's psyqo-lua consumes psxlua,
+        # so a submodule here would close a dependency cycle.
+        uses: actions/checkout@v4
+        with:
+          repository: pcsx-redux/nugget
+          path: nugget
+
+      - name: Library
+        run: make -C src psx -j2
+
+      - name: Library without the parser
+        run: |
+          make -C src clean
+          make -C src psx-noparser -j2
+
+      - name: Compiler
+        run: |
+          make -C src clean
+          make -C src psx-luac NUGGET=$GITHUB_WORKSPACE/nugget -j2
+
+      - name: pcsx-redux
+        # --appimage-extract rather than mounting it: the runner has no FUSE.
+        run: |
+          curl -sL -o pcsx-redux.zip https://distrib.app/pub/org/pcsx-redux/project/dev-linux-x64/latest
+          unzip -q pcsx-redux.zip
+          ./PCSX-Redux-*.AppImage --appimage-extract > /dev/null
+
+      - name: Compile a script on the console
+        run: tests/run-luac.sh "$GITHUB_WORKSPACE/squashfs-root/AppRun"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: luac.ps-exe
+          path: src/luac.ps-exe
