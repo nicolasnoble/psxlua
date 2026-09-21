@@ -45,7 +45,9 @@ jobs:
           ./PCSX-Redux-*.AppImage --appimage-extract > /dev/null
 
       - name: Compile a script on the console
-        run: tests/run-luac.sh "$GITHUB_WORKSPACE/squashfs-root/AppRun"
+        # pcsx-redux brings SDL video up even under -testmode, which is why
+        # pcsx-redux's own CI runs its tests under xvfb-run.
+        run: xvfb-run tests/run-luac.sh "$GITHUB_WORKSPACE/squashfs-root/AppRun"
 
       - uses: actions/upload-artifact@v4
         with:
